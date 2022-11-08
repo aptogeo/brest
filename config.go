@@ -1,0 +1,159 @@
+package brest
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"reflect"
+	"strings"
+
+	"github.com/uptrace/bun"
+)
+
+// Resource structure
+type Resource struct {
+	name         string
+	resourceType reflect.Type
+	action       Action
+}
+
+func (r *Resource) String() string {
+	var str string
+	str = fmt.Sprintf("name=%v resourceType=%v action=%v", r.name, r.resourceType, r.action)
+	return str
+}
+
+// Name returns name
+func (r *Resource) Name() string {
+	return r.name
+}
+
+// ResourceType returns resourceType
+func (r *Resource) ResourceType() reflect.Type {
+	return r.resourceType
+}
+
+// Action returns action
+func (r *Resource) Action() Action {
+	return r.action
+}
+
+// NewResource constructs Resource
+func NewResource(name string, entity interface{}, action Action) *Resource {
+	r := new(Resource)
+	r.name = name
+	r.resourceType = reflect.TypeOf(entity)
+	if r.resourceType.Kind() == reflect.Ptr {
+		r.resourceType = r.resourceType.Elem()
+	}
+	r.action = action
+	return r
+}
+
+// Config structure
+type Config struct {
+	prefix             string
+	db                 *bun.DB
+	resources          map[string]*Resource
+	defaultContentType string
+	defaultAccept      string
+	infoLogger         *log.Logger
+	errorLogger        *log.Logger
+}
+
+func (c *Config) String() string {
+	var str string
+	str = fmt.Sprintf("db=%v resources=%v", c.db, c.resources)
+	return str
+}
+
+// AddResource adds resource
+func (c *Config) AddResource(resource *Resource) {
+	c.InfoLogger().Printf("Register resource: %v\n", resource)
+	elem := reflect.New(resource.ResourceType()).Elem()
+	entity := elem.Addr().Interface()
+	c.db.RegisterModel(entity)
+	c.resources[resource.Name()] = resource
+}
+
+// GetResource gets resource
+func (c *Config) GetResource(resourceName string) *Resource {
+	return c.resources[resourceName]
+}
+
+// SetPrefix sets prefix
+func (c *Config) SetPrefix(prefix string) {
+	c.prefix = prefix
+	if c.prefix == "" {
+		c.prefix = "/"
+	}
+	if !strings.HasPrefix(c.prefix, "/") {
+		c.prefix = "/" + c.prefix
+	}
+	if !strings.HasSuffix(c.prefix, "/") {
+		c.prefix = c.prefix + "/"
+	}
+}
+
+// Prefix gets prefix
+func (c *Config) Prefix() string {
+	return c.prefix
+}
+
+// SetDefaultContentType sets defaultContentType
+func (c *Config) SetDefaultContentType(defaultContentType string) {
+	c.defaultContentType = defaultContentType
+}
+
+// DefaultContentType gets defaultContentType
+func (c *Config) DefaultContentType() string {
+	return c.defaultContentType
+}
+
+// SetDefaultAccept sets defaultAccept
+func (c *Config) SetDefaultAccept(defaultAccept string) {
+	c.defaultAccept = defaultAccept
+}
+
+// DefaultAccept gets defaultAccept
+func (c *Config) DefaultAccept() string {
+	return c.defaultAccept
+}
+
+// DB gets db
+func (c *Config) DB() *bun.DB {
+	return c.db
+}
+
+// SetInfoLogger sets info logger
+func (c *Config) SetInfoLogger(logger *log.Logger) {
+	c.infoLogger = logger
+}
+
+// InfoLogger gets info logger
+func (c *Config) InfoLogger() *log.Logger {
+	return c.infoLogger
+}
+
+// SetErrorLogger sets error logger
+func (c *Config) SetErrorLogger(logger *log.Logger) {
+	c.errorLogger = logger
+}
+
+// ErrorLogger gets error logger
+func (c *Config) ErrorLogger() *log.Logger {
+	return c.errorLogger
+}
+
+// NewConfig constructs Config
+func NewConfig(prefix string, db *bun.DB) *Config {
+	c := new(Config)
+	c.SetPrefix(prefix)
+	c.db = db
+	c.resources = make(map[string]*Resource)
+	c.defaultContentType = "application/json"
+	c.defaultAccept = "application/json"
+	c.infoLogger = log.New(os.Stdout, " INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	c.errorLogger = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+	return c
+}
