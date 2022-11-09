@@ -3,7 +3,6 @@ package brest
 import (
 	"context"
 
-	"github.com/aptogeo/brest/transactional"
 	"github.com/uptrace/bun"
 )
 
@@ -28,17 +27,17 @@ func NewExecutor(config *Config, restQuery *RestQuery, entity interface{}, debug
 	return e
 }
 
-// ExecuteWithSearchPath executes with search path
-func (e *Executor) Execute(ctx context.Context, execFunc transactional.ExecFunc) error {
+// Execute executes query
+func (e *Executor) Execute(ctx context.Context, execFunc ExecFunc) error {
 	var err error
-	err = transactional.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
+	err = Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
 		return execFunc(ctx, tx)
 	})
 	return err
 }
 
 // GetOneExecFunc gets one execution function
-func (e *Executor) GetOneExecFunc() transactional.ExecFunc {
+func (e *Executor) GetOneExecFunc() ExecFunc {
 	return func(ctx context.Context, tx *bun.Tx) error {
 		q := tx.NewSelect().Model(e.entity).WherePK()
 		q = addQueryFields(q, e.restQuery.Fields)
@@ -56,7 +55,7 @@ func (e *Executor) GetOneExecFunc() transactional.ExecFunc {
 }
 
 // GetSliceExecFunc gets slice execution function
-func (e *Executor) GetSliceExecFunc() transactional.ExecFunc {
+func (e *Executor) GetSliceExecFunc() ExecFunc {
 	return func(ctx context.Context, tx *bun.Tx) error {
 		var err error
 		q := tx.NewSelect().Model(e.entity)
@@ -77,7 +76,7 @@ func (e *Executor) GetSliceExecFunc() transactional.ExecFunc {
 }
 
 // InsertExecFunc inserts execution function
-func (e *Executor) InsertExecFunc() transactional.ExecFunc {
+func (e *Executor) InsertExecFunc() ExecFunc {
 	return func(ctx context.Context, tx *bun.Tx) error {
 		q := tx.NewInsert().Model(e.entity)
 		if e.debug {
@@ -92,7 +91,7 @@ func (e *Executor) InsertExecFunc() transactional.ExecFunc {
 }
 
 // UpdateExecFunc updates execution function
-func (e *Executor) UpdateExecFunc() transactional.ExecFunc {
+func (e *Executor) UpdateExecFunc() ExecFunc {
 	return func(ctx context.Context, tx *bun.Tx) error {
 		q := tx.NewUpdate().Model(e.entity).WherePK()
 		if e.debug {
@@ -107,7 +106,7 @@ func (e *Executor) UpdateExecFunc() transactional.ExecFunc {
 }
 
 // DeleteExecFunc deletes execution function
-func (e *Executor) DeleteExecFunc() transactional.ExecFunc {
+func (e *Executor) DeleteExecFunc() ExecFunc {
 	return func(ctx context.Context, tx *bun.Tx) error {
 		q := tx.NewDelete().Model(e.entity).WherePK()
 		if e.debug {

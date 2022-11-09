@@ -1,37 +1,20 @@
-package transactional_test
+package brest_test
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 
-	"github.com/aptogeo/brest/transactional"
+	"github.com/aptogeo/brest"
 	"github.com/stretchr/testify/assert"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/sqlitedialect"
-	"github.com/uptrace/bun/driver/sqliteshim"
 )
 
-type Todo struct {
-	ID   int `bun:"id,pk,autoincrement"`
-	Text string
-}
-
-func initTests(t *testing.T) *bun.DB {
-	sqldb, err := sql.Open(sqliteshim.ShimName, "file::memory:?cache=shared")
-	if err != nil {
-		panic(err)
-	}
-	db := bun.NewDB(sqldb, sqlitedialect.New())
-	db.ResetModel(context.Background(), (*Todo)(nil))
-	return db
-}
-
 func TestTransactionalCurrentKO(t *testing.T) {
-	db := initTests(t)
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err := transactional.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
+	db, _ := initTests(t)
+	defer db.Close()
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err := brest.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ko"}).Exec(ctx)
 		assert.Nil(t, err)
 		return errors.New("ko")
@@ -43,9 +26,9 @@ func TestTransactionalCurrentKO(t *testing.T) {
 }
 
 func TestTransactionalCurrentOK(t *testing.T) {
-	db := initTests(t)
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err := transactional.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
+	db, _ := initTests(t)
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err := brest.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 		return err
 	})
@@ -56,12 +39,12 @@ func TestTransactionalCurrentOK(t *testing.T) {
 }
 
 func TestTransactionalCurrentOKCurrentKO(t *testing.T) {
-	db := initTests(t)
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err := transactional.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
+	db, _ := initTests(t)
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err := brest.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 		assert.Nil(t, err)
-		return transactional.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
+		return brest.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
 			_, err := tx.NewInsert().Model(&Todo{Text: "ko"}).Exec(ctx)
 			assert.Nil(t, err)
 			return errors.New("ko")
@@ -74,12 +57,12 @@ func TestTransactionalCurrentOKCurrentKO(t *testing.T) {
 }
 
 func TestTransactionalCurrentOKCurrentOK(t *testing.T) {
-	db := initTests(t)
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err := transactional.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
+	db, _ := initTests(t)
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err := brest.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 		assert.Nil(t, err)
-		return transactional.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
+		return brest.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
 			_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 			return err
 		})
@@ -91,10 +74,10 @@ func TestTransactionalCurrentOKCurrentOK(t *testing.T) {
 }
 
 func TestTransactionalMandatory(t *testing.T) {
-	db := initTests(t)
+	db, _ := initTests(t)
 	var err error
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err = transactional.ExecuteWithPropagation(ctx, transactional.Mandatory, func(ctx context.Context, tx *bun.Tx) error {
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err = brest.ExecuteWithPropagation(ctx, brest.Mandatory, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 		return err
 	})
@@ -103,8 +86,8 @@ func TestTransactionalMandatory(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, count)
 
-	err = transactional.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
-		return transactional.ExecuteWithPropagation(ctx, transactional.Current, func(ctx context.Context, tx *bun.Tx) error {
+	err = brest.Execute(ctx, func(ctx context.Context, tx *bun.Tx) error {
+		return brest.ExecuteWithPropagation(ctx, brest.Current, func(ctx context.Context, tx *bun.Tx) error {
 			_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 			return err
 		})
@@ -116,10 +99,10 @@ func TestTransactionalMandatory(t *testing.T) {
 }
 
 func TestTransactionalSavepointKO(t *testing.T) {
-	db := initTests(t)
+	db, _ := initTests(t)
 	var err error
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err = transactional.ExecuteWithPropagation(ctx, transactional.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err = brest.ExecuteWithPropagation(ctx, brest.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ko"}).Exec(ctx)
 		assert.Nil(t, err)
 		return errors.New("ko")
@@ -131,10 +114,10 @@ func TestTransactionalSavepointKO(t *testing.T) {
 }
 
 func TestTransactionalSavepointOK(t *testing.T) {
-	db := initTests(t)
+	db, _ := initTests(t)
 	var err error
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err = transactional.ExecuteWithPropagation(ctx, transactional.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err = brest.ExecuteWithPropagation(ctx, brest.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ko"}).Exec(ctx)
 		assert.Nil(t, err)
 		return err
@@ -146,13 +129,13 @@ func TestTransactionalSavepointOK(t *testing.T) {
 }
 
 func TestTransactionalSavepointOKSavepointOK(t *testing.T) {
-	db := initTests(t)
+	db, _ := initTests(t)
 	var err error
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err = transactional.ExecuteWithPropagation(ctx, transactional.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err = brest.ExecuteWithPropagation(ctx, brest.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 		assert.Nil(t, err)
-		return transactional.ExecuteWithPropagation(ctx, transactional.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
+		return brest.ExecuteWithPropagation(ctx, brest.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
 			_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 			assert.Nil(t, err)
 			return err
@@ -165,13 +148,13 @@ func TestTransactionalSavepointOKSavepointOK(t *testing.T) {
 }
 
 func TestTransactionalSavepointOKSavepointKO(t *testing.T) {
-	db := initTests(t)
+	db, _ := initTests(t)
 	var err error
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err = transactional.ExecuteWithPropagation(ctx, transactional.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err = brest.ExecuteWithPropagation(ctx, brest.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 		assert.Nil(t, err)
-		return transactional.ExecuteWithPropagation(ctx, transactional.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
+		return brest.ExecuteWithPropagation(ctx, brest.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
 			_, err := tx.NewInsert().Model(&Todo{Text: "ko"}).Exec(ctx)
 			assert.Nil(t, err)
 			return errors.New("ko")
@@ -184,13 +167,13 @@ func TestTransactionalSavepointOKSavepointKO(t *testing.T) {
 }
 
 func TestTransactionalCurrentOKSavepointKO(t *testing.T) {
-	db := initTests(t)
+	db, _ := initTests(t)
 	var err error
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err = transactional.ExecuteWithPropagation(ctx, transactional.Current, func(ctx context.Context, tx *bun.Tx) error {
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err = brest.ExecuteWithPropagation(ctx, brest.Current, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 		assert.Nil(t, err)
-		return transactional.ExecuteWithPropagation(ctx, transactional.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
+		return brest.ExecuteWithPropagation(ctx, brest.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
 			_, err := tx.NewInsert().Model(&Todo{Text: "ko"}).Exec(ctx)
 			assert.Nil(t, err)
 			return errors.New("ko")
@@ -203,13 +186,13 @@ func TestTransactionalCurrentOKSavepointKO(t *testing.T) {
 }
 
 func TestTransactionalCurrentOKSavepointOK(t *testing.T) {
-	db := initTests(t)
+	db, _ := initTests(t)
 	var err error
-	ctx := transactional.ContextWithDb(context.Background(), db)
-	err = transactional.ExecuteWithPropagation(ctx, transactional.Current, func(ctx context.Context, tx *bun.Tx) error {
+	ctx := brest.ContextWithDb(context.Background(), db)
+	err = brest.ExecuteWithPropagation(ctx, brest.Current, func(ctx context.Context, tx *bun.Tx) error {
 		_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 		assert.Nil(t, err)
-		return transactional.ExecuteWithPropagation(ctx, transactional.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
+		return brest.ExecuteWithPropagation(ctx, brest.Savepoint, func(ctx context.Context, tx *bun.Tx) error {
 			_, err := tx.NewInsert().Model(&Todo{Text: "ok"}).Exec(ctx)
 			return err
 		})

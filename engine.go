@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aptogeo/brest/transactional"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -100,7 +99,7 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx = transactional.ContextWithDb(ctx, e.Config().DB())
+	ctx = ContextWithDb(ctx, e.Config().DB())
 
 	executor := NewExecutor(e.Config(), restQuery, entity, restQuery.Debug)
 

@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/aptogeo/brest"
@@ -86,7 +84,6 @@ func TestPostPatchGetDelete(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
 		resTodo = res.(*Todo)
-		assert.NotEqual(t, resTodo.ID, uuid.Nil)
 		assert.NotEqual(t, resTodo.Text, "")
 	}
 
