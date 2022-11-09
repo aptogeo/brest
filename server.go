@@ -20,6 +20,7 @@ type Server struct {
 func NewServer(config *Config) *Server {
 	s := new(Server)
 	s.config = config
+	s.config.InfoLogger().Printf("Brest configuration: %v\n", s.config)
 	return s
 }
 

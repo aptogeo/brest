@@ -19,7 +19,7 @@ type Resource struct {
 
 func (r *Resource) String() string {
 	var str string
-	str = fmt.Sprintf("name=%v resourceType=%v action=%v", r.name, r.resourceType, r.action)
+	str = fmt.Sprintf("<name=%v resourceType=%v action=%v>", r.name, r.resourceType, r.action)
 	return str
 }
 
@@ -62,14 +62,11 @@ type Config struct {
 }
 
 func (c *Config) String() string {
-	var str string
-	str = fmt.Sprintf("db=%v resources=%v", c.db, c.resources)
-	return str
+	return fmt.Sprintf("version=%v db=%v resources=%v", Version(), c.db, c.resources)
 }
 
 // AddResource adds resource
 func (c *Config) AddResource(resource *Resource) {
-	c.InfoLogger().Printf("Register resource: %v\n", resource)
 	elem := reflect.New(resource.ResourceType()).Elem()
 	entity := elem.Addr().Interface()
 	c.db.RegisterModel(entity)

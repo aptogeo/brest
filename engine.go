@@ -21,6 +21,7 @@ type Engine struct {
 func NewEngine(config *Config) *Engine {
 	e := new(Engine)
 	e.config = config
+	e.config.InfoLogger().Printf("Brest configuration: %v\n", e.config)
 	return e
 }
 
