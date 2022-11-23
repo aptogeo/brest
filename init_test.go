@@ -44,7 +44,7 @@ func initTests(t *testing.T) (*bun.DB, *brest.Config) {
 	}
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 	config := brest.NewConfig("/rest/", db)
-	config.AddResource(brest.NewResource("Todo", (*Todo)(nil), brest.All))
+	config.AddResource(brest.NewResource("Todo", (*Todo)(nil), brest.Get|brest.Post))
 	config.AddResource(brest.NewResource("Author", (*Author)(nil), brest.All))
 	config.AddResource(brest.NewResource("Book", (*Book)(nil), brest.All))
 	db.ResetModel(context.Background(), (*Todo)(nil))

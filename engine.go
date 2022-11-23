@@ -39,6 +39,10 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	if err != nil {
 		return nil, &Error{Cause: err}
 	}
+	// e.Config().InfoLogger().Printf("%v %v\n", restQuery, resource)
+	if resource.Action()&restQuery.Action == 0 {
+		return nil, NewErrorForbbiden(fmt.Sprintf("query %v not authorized for resource %v", restQuery, resource))
+	}
 	var entity interface{}
 	var elem reflect.Value
 	if restQuery.Action == Get {

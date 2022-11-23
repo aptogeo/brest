@@ -231,3 +231,23 @@ func TestMsgpack(t *testing.T) {
 	assert.Equal(t, resAuthor.Lastname, "MsgpackLastname")
 	assert.Equal(t, resAuthor.Picture, []byte{187, 163, 35, 30})
 }
+
+func TestNotAuthorized(t *testing.T) {
+	db, config := initTests(t)
+	defer db.Close()
+	engine := brest.NewEngine(config)
+
+	var err error
+	var res interface{}
+
+	res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Todo", ContentType: "application/x-www-form-urlencoded", Content: []byte("Text=Text")})
+	assert.Nil(t, err)
+	assert.NotNil(t, res)
+	resTodo := res.(*Todo)
+
+	res, err = engine.Execute(&brest.RestQuery{Action: brest.Patch, Resource: "Todo", Key: strconv.Itoa(resTodo.ID), ContentType: "application/x-www-form-urlencoded", Content: []byte("Text=Text")})
+	assert.NotNil(t, err)
+
+	res, err = engine.Execute(&brest.RestQuery{Action: brest.Delete, Resource: "Todo", Key: strconv.Itoa(resTodo.ID)})
+	assert.NotNil(t, err)
+}

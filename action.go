@@ -1,5 +1,7 @@
 package brest
 
+import "strings"
+
 // Action type
 type Action int
 
@@ -23,17 +25,27 @@ const All Action = Get + Post + Put + Patch + Delete
 const None Action = 0
 
 func (a Action) String() string {
-	if a == Get {
-		return "Get"
-	} else if a == Post {
-		return "Post"
-	} else if a == Put {
-		return "Put"
-	} else if a == Patch {
-		return "Patch"
-	} else if a == Delete {
-		return "Delete"
-	} else {
+	strs := make([]string, 0)
+	if a&Get > 0 {
+		strs = append(strs, "Get")
+	}
+	if a&Post > 0 {
+		strs = append(strs, "Post")
+	}
+	if a&Put > 0 {
+		strs = append(strs, "Put")
+	}
+	if a&Patch > 0 {
+		strs = append(strs, "Patch")
+	}
+	if a&Delete > 0 {
+		strs = append(strs, "Delete")
+	}
+	if len(strs) == 0 {
 		return "None"
 	}
+	if len(strs) == 5 {
+		return "All"
+	}
+	return strings.Join(strs, "|")
 }

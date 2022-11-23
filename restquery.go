@@ -28,14 +28,14 @@ func (q *RestQuery) String() string {
 	var str string
 	if q.Action == Get {
 		if q.Key == "" {
-			str = fmt.Sprintf("action=%v resource=%v offset=%v limit=%v fields=%v relations=%v sorts=%v filter=%v", q.Action, q.Resource, q.Offset, q.Limit, q.Fields, q.Relations, q.Sorts, q.Filter)
+			str = fmt.Sprintf("<action=%v resource=%v offset=%v limit=%v fields=%v relations=%v sorts=%v filter=%v>", q.Action, q.Resource, q.Offset, q.Limit, q.Fields, q.Relations, q.Sorts, q.Filter)
 		} else {
-			str = fmt.Sprintf("action=%v resource=%v key=%v fields=%v relations=%v ", q.Action, q.Resource, q.Key, q.Fields, q.Relations)
+			str = fmt.Sprintf("<action=%v resource=%v key=%v fields=%v relations=%v>", q.Action, q.Resource, q.Key, q.Fields, q.Relations)
 		}
 	} else if q.Action == Delete {
-		str = fmt.Sprintf("action=%v resource=%v key=%v", q.Action, q.Resource, q.Key)
+		str = fmt.Sprintf("<action=%v resource=%v key=%v>", q.Action, q.Resource, q.Key)
 	} else {
-		str = fmt.Sprintf("action=%v resource=%v key=%v content-type=%v content=%v", q.Action, q.Resource, q.Key, q.ContentType, q.Content)
+		str = fmt.Sprintf("<action=%v resource=%v key=%v content-type=%v content=%v>", q.Action, q.Resource, q.Key, q.ContentType, q.Content)
 	}
 	return str
 }
@@ -80,6 +80,9 @@ type Filter struct {
 }
 
 func (f *Filter) String() string {
+	if f.Op == "" {
+		return "None"
+	}
 	if f.Op == And || f.Op == Or {
 		var sb strings.Builder
 		for _, filter := range f.Filters {
