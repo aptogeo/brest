@@ -37,9 +37,8 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	}
 	resource, err := e.getResource(restQuery)
 	if err != nil {
-		return nil, &Error{Cause: err}
+		return nil, NewErrorFromCause(err)
 	}
-	// e.Config().InfoLogger().Printf("%v %v\n", restQuery, resource)
 	if resource.Action()&restQuery.Action == 0 {
 		return nil, NewErrorForbbiden(fmt.Sprintf("query %v not authorized for resource %v", restQuery, resource))
 	}
@@ -50,7 +49,7 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 			elem = reflect.New(resource.ResourceType()).Elem()
 			entity = elem.Addr().Interface()
 			if err = setPk(e.Config().DB(), resource.ResourceType(), elem, restQuery.Key); err != nil {
-				return nil, NewErrorFromCause(restQuery, err)
+				return nil, NewErrorFromCause(err)
 			}
 		} else {
 			sliceType := reflect.MakeSlice(reflect.SliceOf(resource.ResourceType()), 0, 0).Type()
@@ -63,7 +62,7 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		elem = reflect.New(resource.ResourceType()).Elem()
 		entity = elem.Addr().Interface()
 		if err = e.Deserialize(restQuery, resource, entity); err != nil {
-			return nil, NewErrorFromCause(restQuery, err)
+			return nil, NewErrorFromCause(err)
 		}
 	} else if restQuery.Action == Put {
 		if restQuery.Key == "" {
@@ -72,7 +71,7 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		elem = reflect.New(resource.ResourceType()).Elem()
 		entity = elem.Addr().Interface()
 		if err = e.Deserialize(restQuery, resource, entity); err != nil {
-			return nil, NewErrorFromCause(restQuery, err)
+			return nil, NewErrorFromCause(err)
 		}
 		setPk(e.Config().DB(), resource.ResourceType(), elem, restQuery.Key)
 	} else if restQuery.Action == Patch {
@@ -82,7 +81,7 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		elem = reflect.New(resource.ResourceType()).Elem()
 		entity = elem.Addr().Interface()
 		if err = setPk(e.Config().DB(), resource.ResourceType(), elem, restQuery.Key); err != nil {
-			return nil, NewErrorFromCause(restQuery, err)
+			return nil, NewErrorFromCause(err)
 		}
 	} else if restQuery.Action == Delete {
 		if restQuery.Key == "" {
@@ -91,10 +90,10 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		elem = reflect.New(resource.ResourceType()).Elem()
 		entity = elem.Addr().Interface()
 		if err = setPk(e.Config().DB(), resource.ResourceType(), elem, restQuery.Key); err != nil {
-			return nil, NewErrorFromCause(restQuery, err)
+			return nil, NewErrorFromCause(err)
 		}
 	} else {
-		return nil, &Error{Message: fmt.Sprintf("unknow action '%v'", restQuery.Action)}
+		return nil, NewErrorBadRequest(fmt.Sprintf("unknow action '%v'", restQuery.Action))
 	}
 
 	var ctx context.Context
@@ -104,6 +103,12 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	if resource.beforeHook != nil {
+		if err = resource.beforeHook(ctx, resource.name, resource.Action(), entity); err != nil {
+			return nil, NewErrorFromCause(err)
+		}
+	}
+
 	ctx = ContextWithDb(ctx, e.Config().DB())
 
 	executor := NewExecutor(e.Config(), restQuery, entity, restQuery.Debug)
@@ -133,7 +138,12 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		err = executor.Execute(ctx, executor.DeleteExecFunc())
 	}
 	if err != nil {
-		return nil, err
+		return nil, NewErrorFromCause(err)
+	}
+	if resource.afterHook != nil {
+		if err = resource.afterHook(ctx, resource.name, resource.Action(), entity); err != nil {
+			return nil, NewErrorFromCause(err)
+		}
 	}
 	if restQuery.Debug {
 		e.Config().InfoLogger().Printf("Execution result: %v\n", entity)
@@ -148,7 +158,7 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 func (e *Engine) Deserialize(restQuery *RestQuery, resource *Resource, entity interface{}) error {
 	if regexp.MustCompile("[+-/]json($|[+-;])").MatchString(restQuery.ContentType) {
 		if err := json.Unmarshal(restQuery.Content, entity); err != nil {
-			return &Error{Cause: err}
+			return NewErrorFromCause(err)
 		}
 	} else if regexp.MustCompile("[+-/]form($|[+-;])").MatchString(restQuery.ContentType) {
 		table := e.config.db.Table(resource.ResourceType())
@@ -178,7 +188,7 @@ func (e *Engine) Deserialize(restQuery *RestQuery, resource *Resource, entity in
 		decoder := msgpack.NewDecoder(bytes.NewReader(restQuery.Content))
 		decoder.SetCustomStructTag("json")
 		if err := decoder.Decode(entity); err != nil {
-			return &Error{Cause: err}
+			return *NewErrorFromCause(err)
 		}
 	} else {
 		return NewErrorBadRequest(fmt.Sprintf("Unknown content type '%v'", restQuery.ContentType))

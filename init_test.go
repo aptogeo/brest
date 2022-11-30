@@ -17,11 +17,12 @@ type Todo struct {
 }
 
 type Book struct {
-	ID       int `bun:",pk,autoincrement"`
-	Title    string
-	NbPages  int
-	AuthorID int
-	Author   *Author `bun:"rel:belongs-to,join:author_id=id"`
+	ID             int `bun:",pk,autoincrement"`
+	Title          string
+	NbPages        int
+	AuthorID       int
+	Author         *Author `bun:"rel:belongs-to,join:author_id=id"`
+	TransientField string  `bun:"-"`
 }
 
 type Author struct {

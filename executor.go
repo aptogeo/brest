@@ -47,7 +47,7 @@ func (e *Executor) GetOneExecFunc() ExecFunc {
 		}
 		count, err := q.ScanAndCount(ctx)
 		if err != nil {
-			return NewErrorFromCause(e.restQuery, err)
+			return NewErrorFromCause(err)
 		}
 		e.count = count
 		return nil
@@ -69,7 +69,7 @@ func (e *Executor) GetSliceExecFunc() ExecFunc {
 		}
 		e.count, err = q.ScanAndCount(ctx)
 		if err != nil {
-			return NewErrorFromCause(e.restQuery, err)
+			return NewErrorFromCause(err)
 		}
 		return nil
 	}
@@ -83,7 +83,7 @@ func (e *Executor) InsertExecFunc() ExecFunc {
 			// TODO
 		}
 		if _, err := q.Exec(ctx); err != nil {
-			return NewErrorFromCause(e.restQuery, err)
+			return NewErrorFromCause(err)
 		}
 		e.count = 1
 		return nil
@@ -98,7 +98,7 @@ func (e *Executor) UpdateExecFunc() ExecFunc {
 			// TODO
 		}
 		if _, err := q.Exec(ctx); err != nil {
-			return NewErrorFromCause(e.restQuery, err)
+			return NewErrorFromCause(err)
 		}
 		e.count = 1
 		return nil
@@ -113,7 +113,7 @@ func (e *Executor) DeleteExecFunc() ExecFunc {
 			// TODO
 		}
 		if _, err := q.Exec(ctx); err != nil {
-			return NewErrorFromCause(e.restQuery, err)
+			return NewErrorFromCause(err)
 		}
 		e.count = 1
 		return nil

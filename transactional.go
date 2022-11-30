@@ -70,10 +70,10 @@ func execute(ctx context.Context, propagation Propagation, execFunc ExecFunc) er
 	tx := TxFromContext(ctx)
 	if tx == nil {
 		if propagation == Mandatory {
-			return newPropagationError(errors.New("No tx found in context with Mandatory propagation"), propagation)
+			return newPropagationError(errors.New("no tx found in context with Mandatory propagation"), propagation)
 		}
 		if db == nil {
-			return newPropagationError(errors.New("No db found in context"), propagation)
+			return newPropagationError(errors.New("no db found in context"), propagation)
 		}
 		newtx, err := db.Begin()
 		if err != nil {

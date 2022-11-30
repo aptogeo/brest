@@ -23,24 +23,24 @@ func TestDeserialize(t *testing.T) {
 	resource := engine.Config().GetResource("Book")
 
 	book = &Book{}
-	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: "application/json", Content: []byte("{\"Title\":\"json title\",\"NbPages\":520,\"UnknownField\":\"UnknownField\"}")}, resource, book)
+	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: brest.Json, Content: []byte("{\"Title\":\"json title\",\"NbPages\":520,\"UnknownField\":\"UnknownField\"}")}, resource, book)
 	assert.Nil(t, err)
 	assert.NotNil(t, book)
 	assert.Equal(t, "json title", book.Title)
 	assert.Equal(t, 520, book.NbPages)
-	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: "application/json", Content: []byte("{\"NbPages\":230}")}, resource, book)
+	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: brest.Json, Content: []byte("{\"NbPages\":230}")}, resource, book)
 	assert.Nil(t, err)
 	assert.NotNil(t, book)
 	assert.Equal(t, "json title", book.Title)
 	assert.Equal(t, 230, book.NbPages)
 
 	book = &Book{}
-	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: "application/x-www-form-urlencoded", Content: []byte("Title=form title&NbPages=310&UnknownField=UnknownField")}, resource, book)
+	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: brest.Form, Content: []byte("Title=form title&NbPages=310&UnknownField=UnknownField")}, resource, book)
 	assert.Nil(t, err)
 	assert.NotNil(t, book)
 	assert.Equal(t, "form title", book.Title)
 	assert.Equal(t, 310, book.NbPages)
-	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: "application/x-www-form-urlencoded", Content: []byte("NbPages=450")}, resource, book)
+	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: brest.Form, Content: []byte("NbPages=450")}, resource, book)
 	assert.Nil(t, err)
 	assert.NotNil(t, book)
 	assert.Equal(t, "form title", book.Title)
@@ -49,14 +49,14 @@ func TestDeserialize(t *testing.T) {
 	content, err = msgpack.Marshal(&Book{Title: "msgpack title", NbPages: 480})
 	assert.Nil(t, err)
 	book = &Book{}
-	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: "application/x-msgpack", Content: content}, resource, book)
+	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: brest.Msgpack, Content: content}, resource, book)
 	assert.Nil(t, err)
 	assert.NotNil(t, book)
 	assert.Equal(t, "msgpack title", book.Title)
 	assert.Equal(t, 480, book.NbPages)
 	content, err = msgpack.Marshal(&PageOnly{NbPages: 110})
 	assert.Nil(t, err)
-	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: "application/x-msgpack", Content: content}, resource, book)
+	err = engine.Deserialize(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: brest.Msgpack, Content: content}, resource, book)
 	assert.Nil(t, err)
 	assert.NotNil(t, book)
 	assert.Equal(t, "msgpack title", book.Title)
@@ -80,7 +80,7 @@ func TestPostPatchGetDelete(t *testing.T) {
 	for _, todo := range todos {
 		content, err = json.Marshal(todo)
 		assert.Nil(t, err)
-		res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Todo", ContentType: "application/json", Content: content})
+		res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Todo", ContentType: brest.Json, Content: content})
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
 		resTodo = res.(*Todo)
@@ -90,7 +90,7 @@ func TestPostPatchGetDelete(t *testing.T) {
 	for _, author := range authors {
 		content, err = json.Marshal(author)
 		assert.Nil(t, err)
-		res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Author", ContentType: "application/json", Content: content})
+		res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Author", ContentType: brest.Json, Content: content})
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
 		resAuthor = res.(*Author)
@@ -102,7 +102,7 @@ func TestPostPatchGetDelete(t *testing.T) {
 	for _, book := range books {
 		content, err = json.Marshal(book)
 		assert.Nil(t, err)
-		res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: "application/json", Content: content})
+		res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Book", ContentType: brest.Json, Content: content})
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
 		resBook = res.(*Book)
@@ -111,7 +111,16 @@ func TestPostPatchGetDelete(t *testing.T) {
 		assert.Equal(t, resBook.Title, book.Title)
 		assert.Equal(t, resBook.NbPages, 0)
 
-		res, err = engine.Execute(&brest.RestQuery{Action: brest.Patch, Resource: "Book", Key: strconv.Itoa(resBook.ID), ContentType: "application/x-www-form-urlencoded", Content: []byte("NbPages=200")})
+		res, err = engine.Execute(&brest.RestQuery{Action: brest.Patch, Resource: "Book", Key: strconv.Itoa(resBook.ID), ContentType: brest.Json, Content: []byte("{\"NbPages\":100}")})
+		assert.Nil(t, err)
+		assert.NotNil(t, res)
+		resBook = res.(*Book)
+		assert.NotEqual(t, resBook.ID, 0)
+		assert.NotEqual(t, resBook.AuthorID, 0)
+		assert.Equal(t, resBook.Title, book.Title)
+		assert.Equal(t, resBook.NbPages, 100)
+
+		res, err = engine.Execute(&brest.RestQuery{Action: brest.Patch, Resource: "Book", Key: strconv.Itoa(resBook.ID), ContentType: brest.Form, Content: []byte("NbPages=200")})
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
 		resBook = res.(*Book)
@@ -140,7 +149,7 @@ func TestPostPatchGetDelete(t *testing.T) {
 			assert.NotNil(t, resBook.Title)
 			assert.Equal(t, resBook.NbPages, 200)
 
-			res, err = engine.Execute(&brest.RestQuery{Action: brest.Put, Resource: "Book", Key: strconv.Itoa(resBook.ID), ContentType: "application/x-www-form-urlencoded", Content: []byte("Title=" + resBook.Title + "_1&AuthorID=" + strconv.Itoa(resBook.AuthorID))})
+			res, err = engine.Execute(&brest.RestQuery{Action: brest.Put, Resource: "Book", Key: strconv.Itoa(resBook.ID), ContentType: brest.Form, Content: []byte("Title=" + resBook.Title + "_1&AuthorID=" + strconv.Itoa(resBook.AuthorID))})
 			assert.Nil(t, err)
 			assert.NotNil(t, res)
 			resBook2 := res.(*Book)
@@ -199,7 +208,7 @@ func TestFormUrlencoded(t *testing.T) {
 	var res interface{}
 	var resAuthor *Author
 
-	res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Author", ContentType: "application/x-www-form-urlencoded", Content: []byte("Firstname=Firstname&Lastname=Lastname")})
+	res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Author", ContentType: brest.Form, Content: []byte("Firstname=Firstname&Lastname=Lastname")})
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 	resAuthor = res.(*Author)
@@ -222,7 +231,7 @@ func TestMsgpack(t *testing.T) {
 	content, err = msgpack.Marshal(resAuthor)
 	assert.Nil(t, err)
 
-	res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Author", ContentType: "application/x-msgpack", Content: content})
+	res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Author", ContentType: brest.Msgpack, Content: content})
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 	resAuthor = res.(*Author)
@@ -240,12 +249,12 @@ func TestNotAuthorized(t *testing.T) {
 	var err error
 	var res interface{}
 
-	res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Todo", ContentType: "application/x-www-form-urlencoded", Content: []byte("Text=Text")})
+	res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Todo", ContentType: brest.Form, Content: []byte("Text=Text")})
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 	resTodo := res.(*Todo)
 
-	res, err = engine.Execute(&brest.RestQuery{Action: brest.Patch, Resource: "Todo", Key: strconv.Itoa(resTodo.ID), ContentType: "application/x-www-form-urlencoded", Content: []byte("Text=Text")})
+	res, err = engine.Execute(&brest.RestQuery{Action: brest.Patch, Resource: "Todo", Key: strconv.Itoa(resTodo.ID), ContentType: brest.Form, Content: []byte("Text=Text")})
 	assert.NotNil(t, err)
 
 	res, err = engine.Execute(&brest.RestQuery{Action: brest.Delete, Resource: "Todo", Key: strconv.Itoa(resTodo.ID)})

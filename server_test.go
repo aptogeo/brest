@@ -97,7 +97,7 @@ func TestServer(t *testing.T) {
 
 	req, err = http.NewRequest("GET", ts.URL+"/rest/Book", bytes.NewBufferString(""))
 	assert.Nil(t, err)
-	req.Header.Set("Accept", "application/x-msgpack")
+	req.Header.Set("Accept", brest.Msgpack)
 	res, err = http.DefaultClient.Do(req)
 	assert.Nil(t, err)
 	body, err = ioutil.ReadAll(res.Body)

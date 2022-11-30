@@ -1,6 +1,7 @@
 package brest
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -10,11 +11,19 @@ import (
 	"github.com/uptrace/bun"
 )
 
+// BeforeHook defines before execution callback function
+type BeforeHook func(ctx context.Context, name string, action Action, entity interface{}) error
+
+// AfterHook defines after execution callback function
+type AfterHook func(ctx context.Context, name string, action Action, entity interface{}) error
+
 // Resource structure
 type Resource struct {
 	name         string
 	resourceType reflect.Type
 	action       Action
+	beforeHook   BeforeHook
+	afterHook    AfterHook
 }
 
 func (r *Resource) String() string {
@@ -47,6 +56,20 @@ func NewResource(name string, entity interface{}, action Action) *Resource {
 		r.resourceType = r.resourceType.Elem()
 	}
 	r.action = action
+	return r
+}
+
+// NewResourceWithHooks constructs Resource with hooks
+func NewResourceWithHooks(name string, entity interface{}, action Action, beforeHook BeforeHook, afterHook AfterHook) *Resource {
+	r := new(Resource)
+	r.name = name
+	r.resourceType = reflect.TypeOf(entity)
+	if r.resourceType.Kind() == reflect.Ptr {
+		r.resourceType = r.resourceType.Elem()
+	}
+	r.action = action
+	r.beforeHook = beforeHook
+	r.afterHook = afterHook
 	return r
 }
 
@@ -148,8 +171,8 @@ func NewConfig(prefix string, db *bun.DB) *Config {
 	c.SetPrefix(prefix)
 	c.db = db
 	c.resources = make(map[string]*Resource)
-	c.defaultContentType = "application/json"
-	c.defaultAccept = "application/json"
+	c.defaultContentType = Json
+	c.defaultAccept = Json
 	c.infoLogger = log.New(os.Stdout, " INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	c.errorLogger = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 	return c

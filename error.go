@@ -1,7 +1,5 @@
 package brest
 
-import "fmt"
-
 // Error struct
 type Error struct {
 	Message string
@@ -20,12 +18,14 @@ func NewErrorForbbiden(message string) *Error {
 }
 
 // NewErrorFromCause constructs Error from cause error
-func NewErrorFromCause(restQuery *RestQuery, cause error) *Error {
-	errStr := cause.Error()
-	if errStr == "pg: no rows in result set" || errStr == "pg: multiple rows in result set" {
-		return &Error{Message: fmt.Sprintf("resource '%v' with key '%v' not found", restQuery.Resource, restQuery.Key), Code: 404, Cause: cause}
+func NewErrorFromCause(cause error) *Error {
+	if err, ok := cause.(*Error); ok {
+		return err
 	}
-	return &Error{Cause: cause}
+	if err, ok := cause.(Error); ok {
+		return &err
+	}
+	return &Error{Cause: cause, Code: 500}
 }
 
 // Error implements the error interface
