@@ -103,13 +103,13 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	ctx = ContextWithDb(ctx, e.Config().DB())
+
 	if resource.beforeHook != nil {
 		if err = resource.beforeHook(ctx, resource.name, resource.Action(), entity); err != nil {
 			return nil, NewErrorFromCause(err)
 		}
 	}
-
-	ctx = ContextWithDb(ctx, e.Config().DB())
 
 	executor := NewExecutor(e.Config(), restQuery, entity, restQuery.Debug)
 
