@@ -42,25 +42,22 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	if resource.Action()&restQuery.Action == 0 {
 		return nil, NewErrorForbbiden(fmt.Sprintf("query %v not authorized for resource %v", restQuery, resource))
 	}
-	var entity interface{}
-	var elem reflect.Value
+	elem := reflect.New(resource.ResourceType()).Elem()
+	entity := elem.Addr().Interface()
+	var slice interface{}
 	if restQuery.Action == Get {
 		if restQuery.Key != "" {
-			elem = reflect.New(resource.ResourceType()).Elem()
-			entity = elem.Addr().Interface()
 			if err = setPk(e.Config().DB(), resource.ResourceType(), elem, restQuery.Key); err != nil {
 				return nil, NewErrorFromCause(err)
 			}
 		} else {
 			sliceType := reflect.MakeSlice(reflect.SliceOf(resource.ResourceType()), 0, 0).Type()
-			entity = reflect.New(sliceType).Interface()
+			slice = reflect.New(sliceType).Interface()
 		}
 	} else if restQuery.Action == Post {
 		if restQuery.Key != "" {
 			return nil, NewErrorBadRequest("action 'Post': key is forbidden")
 		}
-		elem = reflect.New(resource.ResourceType()).Elem()
-		entity = elem.Addr().Interface()
 		if err = e.Deserialize(restQuery, resource, entity); err != nil {
 			return nil, NewErrorFromCause(err)
 		}
@@ -68,8 +65,6 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		if restQuery.Key == "" {
 			return nil, NewErrorBadRequest("action 'Put': key is mandatory")
 		}
-		elem = reflect.New(resource.ResourceType()).Elem()
-		entity = elem.Addr().Interface()
 		if err = e.Deserialize(restQuery, resource, entity); err != nil {
 			return nil, NewErrorFromCause(err)
 		}
@@ -78,8 +73,6 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		if restQuery.Key == "" {
 			return nil, NewErrorBadRequest("action 'Patch': key is mandatory")
 		}
-		elem = reflect.New(resource.ResourceType()).Elem()
-		entity = elem.Addr().Interface()
 		if err = setPk(e.Config().DB(), resource.ResourceType(), elem, restQuery.Key); err != nil {
 			return nil, NewErrorFromCause(err)
 		}
@@ -87,8 +80,6 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		if restQuery.Key == "" {
 			return nil, NewErrorBadRequest("action 'Delete': key is mandatory")
 		}
-		elem = reflect.New(resource.ResourceType()).Elem()
-		entity = elem.Addr().Interface()
 		if err = setPk(e.Config().DB(), resource.ResourceType(), elem, restQuery.Key); err != nil {
 			return nil, NewErrorFromCause(err)
 		}
@@ -107,7 +98,7 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 
 	if resource.beforeHook != nil {
 		if restQuery.Action == Get && restQuery.Key == "" {
-			if err = resource.beforeHook(ctx, restQuery, nil); err != nil {
+			if err = resource.beforeHook(ctx, restQuery, entity); err != nil {
 				return nil, NewErrorFromCause(err)
 			}
 		} else {
@@ -117,7 +108,12 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		}
 	}
 
-	executor := NewExecutor(e.Config(), restQuery, entity)
+	var executor *Executor
+	if restQuery.Action == Get && restQuery.Key == "" {
+		executor = NewExecutor(e.Config(), restQuery, slice)
+	} else {
+		executor = NewExecutor(e.Config(), restQuery, entity)
+	}
 
 	if restQuery.Action == Get {
 		if restQuery.Key != "" {
@@ -148,9 +144,9 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	}
 	if resource.afterHook != nil {
 		if restQuery.Action == Get && restQuery.Key == "" {
-			v := reflect.ValueOf(entity).Elem()
+			v := reflect.ValueOf(slice).Elem()
 			for i := 0; i < v.Len(); i++ {
-				if err = resource.afterHook(ctx, restQuery, v.Index(i)); err != nil {
+				if err = resource.afterHook(ctx, restQuery, v.Index(i).Addr().Interface()); err != nil {
 					return nil, NewErrorFromCause(err)
 				}
 			}
@@ -161,7 +157,11 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		}
 	}
 	if restQuery.Debug {
-		e.Config().InfoLogger().Printf("Execution result: %v\n", entity)
+		if restQuery.Action == Get && restQuery.Key == "" {
+			e.Config().InfoLogger().Printf("Execution result: %v\n", slice)
+		} else {
+			e.Config().InfoLogger().Printf("Execution result: %v\n", entity)
+		}
 	}
 	if restQuery.Action == Get && restQuery.Key == "" {
 		return NewPage(executor.entity, executor.count, restQuery), nil

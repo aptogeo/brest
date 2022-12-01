@@ -36,12 +36,12 @@ type Author struct {
 }
 
 func AuthorBeforeHook(ctx context.Context, restQuery *brest.RestQuery, entity interface{}) error {
-	log.Println("AuthorBeforeHook", restQuery, entity)
+	log.Println("AuthorBeforeHook", restQuery, entity.(*Author))
 	return nil
 }
 
 func AuthorAfterHook(ctx context.Context, restQuery *brest.RestQuery, entity interface{}) error {
-	log.Println("AuthorAfterHook", restQuery, entity)
+	log.Println("AuthorAfterHook", restQuery, entity.(*Author))
 	return nil
 }
 
