@@ -106,12 +106,12 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	ctx = ContextWithDb(ctx, e.Config().DB())
 
 	if resource.beforeHook != nil {
-		if err = resource.beforeHook(ctx, resource.name, resource.Action(), entity); err != nil {
+		if err = resource.beforeHook(ctx, resource.name, restQuery.Action, entity); err != nil {
 			return nil, NewErrorFromCause(err)
 		}
 	}
 
-	executor := NewExecutor(e.Config(), restQuery, entity, restQuery.Debug)
+	executor := NewExecutor(e.Config(), restQuery, entity)
 
 	if restQuery.Action == Get {
 		if restQuery.Key != "" {
@@ -141,8 +141,17 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		return nil, NewErrorFromCause(err)
 	}
 	if resource.afterHook != nil {
-		if err = resource.afterHook(ctx, resource.name, resource.Action(), entity); err != nil {
-			return nil, NewErrorFromCause(err)
+		if restQuery.Action == Get && restQuery.Key == "" {
+			slice := entity.([]interface{})
+			for i := 0; i < len(slice); i++ {
+				if err = resource.afterHook(ctx, resource.name, restQuery.Action, slice[i]); err != nil {
+					return nil, NewErrorFromCause(err)
+				}
+			}
+		} else {
+			if err = resource.afterHook(ctx, resource.name, restQuery.Action, entity); err != nil {
+				return nil, NewErrorFromCause(err)
+			}
 		}
 	}
 	if restQuery.Debug {

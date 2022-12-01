@@ -8,21 +8,19 @@ import (
 
 // Executor structure
 type Executor struct {
-	config             *Config
-	restQuery          *RestQuery
-	entity             interface{}
-	debug              bool
-	count              int
-	originalSearchPath string
+	config    *Config
+	restQuery *RestQuery
+	entity    interface{}
+	count     int
+	total     int
 }
 
 // NewExecutor constructs Executor
-func NewExecutor(config *Config, restQuery *RestQuery, entity interface{}, debug bool) *Executor {
+func NewExecutor(config *Config, restQuery *RestQuery, entity interface{}) *Executor {
 	e := new(Executor)
 	e.config = config
 	e.restQuery = restQuery
 	e.entity = entity
-	e.debug = debug
 	e.count = 0
 	return e
 }
@@ -42,9 +40,6 @@ func (e *Executor) GetOneExecFunc() ExecFunc {
 		q := tx.NewSelect().Model(e.entity).WherePK()
 		q = addQueryFields(q, e.restQuery.Fields)
 		q = addQueryRelations(q, e.restQuery.Relations)
-		if e.debug {
-			// TODO
-		}
 		count, err := q.ScanAndCount(ctx)
 		if err != nil {
 			return NewErrorFromCause(err)
@@ -64,9 +59,6 @@ func (e *Executor) GetSliceExecFunc() ExecFunc {
 		q = addQueryFields(q, e.restQuery.Fields)
 		q = addQuerySorts(q, e.restQuery.Sorts)
 		q = addQueryFilter(q, e.restQuery.Filter, And)
-		if e.debug {
-			// TODO
-		}
 		e.count, err = q.ScanAndCount(ctx)
 		if err != nil {
 			return NewErrorFromCause(err)
@@ -79,9 +71,6 @@ func (e *Executor) GetSliceExecFunc() ExecFunc {
 func (e *Executor) InsertExecFunc() ExecFunc {
 	return func(ctx context.Context, tx *bun.Tx) error {
 		q := tx.NewInsert().Model(e.entity)
-		if e.debug {
-			// TODO
-		}
 		if _, err := q.Exec(ctx); err != nil {
 			return NewErrorFromCause(err)
 		}
@@ -94,9 +83,6 @@ func (e *Executor) InsertExecFunc() ExecFunc {
 func (e *Executor) UpdateExecFunc() ExecFunc {
 	return func(ctx context.Context, tx *bun.Tx) error {
 		q := tx.NewUpdate().Model(e.entity).WherePK()
-		if e.debug {
-			// TODO
-		}
 		if _, err := q.Exec(ctx); err != nil {
 			return NewErrorFromCause(err)
 		}
@@ -109,9 +95,6 @@ func (e *Executor) UpdateExecFunc() ExecFunc {
 func (e *Executor) DeleteExecFunc() ExecFunc {
 	return func(ctx context.Context, tx *bun.Tx) error {
 		q := tx.NewDelete().Model(e.entity).WherePK()
-		if e.debug {
-			// TODO
-		}
 		if _, err := q.Exec(ctx); err != nil {
 			return NewErrorFromCause(err)
 		}

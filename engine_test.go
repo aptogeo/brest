@@ -160,6 +160,22 @@ func TestPostPatchGetDelete(t *testing.T) {
 		}
 	}
 
+	res, err = engine.Execute(&brest.RestQuery{Action: brest.Get, Resource: "Author", Offset: 0, Limit: 2})
+	assert.Nil(t, err)
+	assert.NotNil(t, res)
+	page = *res.(*brest.Page)
+	assert.Equal(t, page.Count, 3)
+	resAuthors = *page.Slice.(*[]Author)
+	assert.Equal(t, len(resAuthors), 2)
+
+	res, err = engine.Execute(&brest.RestQuery{Action: brest.Get, Resource: "Author", Offset: 2, Limit: 2})
+	assert.Nil(t, err)
+	assert.NotNil(t, res)
+	page = *res.(*brest.Page)
+	assert.Equal(t, page.Count, 3)
+	resAuthors = *page.Slice.(*[]Author)
+	assert.Equal(t, len(resAuthors), 1)
+
 	res, err = engine.Execute(&brest.RestQuery{Action: brest.Get, Resource: "Author", Key: "1"})
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
