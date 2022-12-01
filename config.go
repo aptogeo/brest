@@ -12,10 +12,10 @@ import (
 )
 
 // BeforeHook defines before execution callback function
-type BeforeHook func(ctx context.Context, name string, action Action, entity interface{}) error
+type BeforeHook func(ctx context.Context, restQuery *RestQuery, entity interface{}) error
 
 // AfterHook defines after execution callback function
-type AfterHook func(ctx context.Context, name string, action Action, entity interface{}) error
+type AfterHook func(ctx context.Context, restQuery *RestQuery, entity interface{}) error
 
 // Resource structure
 type Resource struct {

@@ -106,8 +106,14 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	ctx = ContextWithDb(ctx, e.Config().DB())
 
 	if resource.beforeHook != nil {
-		if err = resource.beforeHook(ctx, resource.name, restQuery.Action, entity); err != nil {
-			return nil, NewErrorFromCause(err)
+		if restQuery.Action == Get && restQuery.Key == "" {
+			if err = resource.beforeHook(ctx, restQuery, nil); err != nil {
+				return nil, NewErrorFromCause(err)
+			}
+		} else {
+			if err = resource.beforeHook(ctx, restQuery, entity); err != nil {
+				return nil, NewErrorFromCause(err)
+			}
 		}
 	}
 
@@ -142,14 +148,14 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	}
 	if resource.afterHook != nil {
 		if restQuery.Action == Get && restQuery.Key == "" {
-			slice := entity.([]interface{})
-			for i := 0; i < len(slice); i++ {
-				if err = resource.afterHook(ctx, resource.name, restQuery.Action, slice[i]); err != nil {
+			v := reflect.ValueOf(entity).Elem()
+			for i := 0; i < v.Len(); i++ {
+				if err = resource.afterHook(ctx, restQuery, v.Index(i)); err != nil {
 					return nil, NewErrorFromCause(err)
 				}
 			}
 		} else {
-			if err = resource.afterHook(ctx, resource.name, restQuery.Action, entity); err != nil {
+			if err = resource.afterHook(ctx, restQuery, entity); err != nil {
 				return nil, NewErrorFromCause(err)
 			}
 		}
