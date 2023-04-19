@@ -78,9 +78,7 @@ func TestPostPatchGetDelete(t *testing.T) {
 	var resBook *Book
 
 	for _, todo := range todos {
-		content, err = json.Marshal(todo)
-		assert.Nil(t, err)
-		res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Todo", ContentType: brest.Json, Content: content})
+		res, err = engine.Execute(&brest.RestQuery{Action: brest.Post, Resource: "Todo", Content: todo})
 		assert.Nil(t, err)
 		assert.NotNil(t, res)
 		resTodo = res.(*Todo)

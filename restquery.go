@@ -14,7 +14,7 @@ type RestQuery struct {
 	Key         string
 	ContentType string
 	Accept      string
-	Content     []byte
+	Content     interface{}
 	Offset      int
 	Limit       int
 	Fields      []*Field
@@ -35,7 +35,7 @@ func (q *RestQuery) String() string {
 	} else if q.Action == Delete {
 		str = fmt.Sprintf("<action=%v resource=%v key=%v>", q.Action, q.Resource, q.Key)
 	} else {
-		str = fmt.Sprintf("<action=%v resource=%v key=%v content-type=%v content=%v>", q.Action, q.Resource, q.Key, q.ContentType, q.Content)
+		str = fmt.Sprintf("<action=%v resource=%v key=%v content-type=%v>", q.Action, q.Resource, q.Key, q.ContentType)
 	}
 	return str
 }

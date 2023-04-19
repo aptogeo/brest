@@ -33,9 +33,9 @@ var requestDecoderTests = []struct {
 	{"/rest/User?offset=60&limit=10&sort=lastname&fields=user.*,user.roles", "GET", &brest.RestQuery{Action: brest.Get, Resource: "User", Offset: 60, Limit: 10, Fields: []*brest.Field{{Name: "user.*"}, {Name: "user.roles"}}, Sorts: []*brest.Sort{{Name: "lastname", Asc: true}}, Filter: &brest.Filter{}}},
 	{"/rest/User?filter=%7B%22Op%22%3A%22ilk%22%2C%22Attr%22%3A%22title%22%2C%22Value%22%3A%22%25lo%25%22%7D", "GET", &brest.RestQuery{Action: brest.Get, Resource: "User", Offset: 0, Limit: 10, Fields: []*brest.Field{}, Sorts: []*brest.Sort{}, Filter: &brest.Filter{Op: brest.Llk, Attr: "title", Value: "%lo%"}}},
 	{"/rest/User?filter=%7B%22Op%22%3A%22in%22%2C%22Attr%22%3A%22title%22%2C%22Value%22%3A%5B%22Titre+1%22%2C%22Titre+2%22%5D%7D", "GET", &brest.RestQuery{Action: brest.Get, Resource: "User", Offset: 0, Limit: 10, Fields: []*brest.Field{}, Sorts: []*brest.Sort{}, Filter: &brest.Filter{Op: brest.In, Attr: "title", Value: []string{"Titre 1", "Titre 2"}}}},
-	{"/rest/User", "POST", &brest.RestQuery{Action: brest.Post, Resource: "User", ContentType: brest.Json}},
-	{"/rest/User/1", "PUT", &brest.RestQuery{Action: brest.Put, Resource: "User", Key: "1", ContentType: brest.Json}},
-	{"/rest/User/1", "PATCH", &brest.RestQuery{Action: brest.Patch, Resource: "User", Key: "1", ContentType: brest.Json}},
+	{"/rest/User", "POST", &brest.RestQuery{Action: brest.Post, Resource: "User", ContentType: brest.Json, Content: make([]byte, 0)}},
+	{"/rest/User/1", "PUT", &brest.RestQuery{Action: brest.Put, Resource: "User", Key: "1", ContentType: brest.Json, Content: make([]byte, 0)}},
+	{"/rest/User/1", "PATCH", &brest.RestQuery{Action: brest.Patch, Resource: "User", Key: "1", ContentType: brest.Json, Content: make([]byte, 0)}},
 	{"/rest/User/1", "DELETE", &brest.RestQuery{Action: brest.Delete, Resource: "User", Key: "1"}},
 	{"/rest/User/specific/otherservice", "GET", nil},
 	{"/rest", "GET", nil},
@@ -56,9 +56,9 @@ func TestRequestDecoder(t *testing.T) {
 		err = res.Body.Close()
 		assert.Nil(t, err)
 		if rt.expected != nil {
-			assert.Equal(t, string(body), rt.expected.String())
+			assert.Equal(t, rt.expected.String(), string(body))
 		} else {
-			assert.Equal(t, string(body), "")
+			assert.Equal(t, "", string(body))
 		}
 	}
 }

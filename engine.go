@@ -32,9 +32,6 @@ func (e *Engine) Config() *Config {
 
 // Execute executes a rest query
 func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
-	if restQuery.Debug {
-		e.Config().InfoLogger().Printf("Execution request: %v\n", restQuery)
-	}
 	resource, err := e.getResource(restQuery)
 	if err != nil {
 		return nil, NewErrorFromCause(err)
@@ -108,6 +105,11 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 		}
 	}
 
+	if restQuery.Debug {
+		e.Config().InfoLogger().Printf("Execution request: %v\n", restQuery)
+		e.Config().InfoLogger().Printf("Data: %v\n", entity)
+	}
+
 	var executor *Executor
 	if restQuery.Action == Get && restQuery.Key == "" {
 		executor = NewExecutor(e.Config(), restQuery, slice)
@@ -142,6 +144,15 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 	if err != nil {
 		return nil, NewErrorFromCause(err)
 	}
+
+	if restQuery.Debug {
+		if restQuery.Action == Get && restQuery.Key == "" {
+			e.Config().InfoLogger().Printf("Execution result: %v\n", slice)
+		} else {
+			e.Config().InfoLogger().Printf("Execution result: %v\n", entity)
+		}
+	}
+
 	if resource.afterHook != nil {
 		if restQuery.Action == Get && restQuery.Key == "" {
 			v := reflect.ValueOf(slice).Elem()
@@ -156,13 +167,7 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 			}
 		}
 	}
-	if restQuery.Debug {
-		if restQuery.Action == Get && restQuery.Key == "" {
-			e.Config().InfoLogger().Printf("Execution result: %v\n", slice)
-		} else {
-			e.Config().InfoLogger().Printf("Execution result: %v\n", entity)
-		}
-	}
+
 	if restQuery.Action == Get && restQuery.Key == "" {
 		return NewPage(executor.entity, executor.count, restQuery), nil
 	}
@@ -171,45 +176,63 @@ func (e *Engine) Execute(restQuery *RestQuery) (interface{}, error) {
 
 // Deserialize deserializes data into entity
 func (e *Engine) Deserialize(restQuery *RestQuery, resource *Resource, entity interface{}) error {
-	if regexp.MustCompile("[+-/]json($|[+-;])").MatchString(restQuery.ContentType) {
-		if err := json.Unmarshal(restQuery.Content, entity); err != nil {
-			return NewErrorFromCause(err)
-		}
-	} else if regexp.MustCompile("[+-/]form($|[+-;])").MatchString(restQuery.ContentType) {
-		table := e.config.db.Table(resource.ResourceType())
-		keyValues := strings.Split(string(restQuery.Content), "&")
-		elem := reflect.ValueOf(entity).Elem()
-		for _, keyValue := range keyValues {
-			parts := strings.Split(keyValue, "=")
-			if parts != nil && len(parts) == 2 {
-				found := false
-				for _, field := range table.Fields {
-					if field.GoName == parts[0] {
-						field.ScanValue(elem, parts[1])
-						found = true
-					}
-				}
-				if !found {
+	if restQuery.Content == nil {
+		return nil
+	}
+	switch restQuery.Content.(type) {
+	case []byte:
+		if regexp.MustCompile("[+-/]json($|[+-;])").MatchString(restQuery.ContentType) {
+			if err := json.Unmarshal(restQuery.Content.([]byte), entity); err != nil {
+				return NewErrorFromCause(err)
+			}
+		} else if regexp.MustCompile("[+-/]form($|[+-;])").MatchString(restQuery.ContentType) {
+			table := e.config.db.Table(resource.ResourceType())
+			keyValues := strings.Split(string(restQuery.Content.([]byte)), "&")
+			elem := reflect.ValueOf(entity).Elem()
+			for _, keyValue := range keyValues {
+				parts := strings.Split(keyValue, "=")
+				if len(parts) == 2 {
+					found := false
 					for _, field := range table.Fields {
-						if field.Name == parts[0] {
+						if field.GoName == parts[0] {
 							field.ScanValue(elem, parts[1])
 							found = true
 						}
 					}
+					if !found {
+						for _, field := range table.Fields {
+							if field.Name == parts[0] {
+								field.ScanValue(elem, parts[1])
+								found = true
+							}
+						}
+					}
 				}
 			}
+		} else if regexp.MustCompile("[+-/](msgpack|messagepack)($|[+-])").MatchString(restQuery.ContentType) {
+			decoder := msgpack.NewDecoder(bytes.NewReader(restQuery.Content.([]byte)))
+			decoder.SetCustomStructTag("json")
+			if err := decoder.Decode(entity); err != nil {
+				return *NewErrorFromCause(err)
+			}
+		} else {
+			return NewErrorBadRequest(fmt.Sprintf("Unknown content type '%v'", restQuery.ContentType))
 		}
-	} else if regexp.MustCompile("[+-/](msgpack|messagepack)($|[+-])").MatchString(restQuery.ContentType) {
-		decoder := msgpack.NewDecoder(bytes.NewReader(restQuery.Content))
-		decoder.SetCustomStructTag("json")
-		if err := decoder.Decode(entity); err != nil {
-			return *NewErrorFromCause(err)
+	default:
+		src := reflect.ValueOf(restQuery.Content)
+		dst := reflect.ValueOf(entity)
+		if src.Kind() == reflect.Ptr {
+			src = src.Elem()
 		}
-	} else {
-		return NewErrorBadRequest(fmt.Sprintf("Unknown content type '%v'", restQuery.ContentType))
-	}
-	if restQuery.Debug {
-		e.Config().InfoLogger().Printf("Serialized response in %v: %v\n", restQuery.ContentType, entity)
+		if dst.Kind() == reflect.Ptr {
+			dst = dst.Elem()
+		}
+		for i := 0; i < src.NumField(); i++ {
+			newValField := dst.Field(i)
+			if newValField.CanSet() {
+				newValField.Set(src.Field(i))
+			}
+		}
 	}
 	return nil
 }
